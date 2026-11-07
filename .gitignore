@@ -1,0 +1,33 @@
+# Archivos de compilación y empaquetado de Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Archivos del sistema operativo (macOS y Windows)
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Configuraciones de IDEs (VS Code, IntelliJ, Eclipse)
+.vscode/
+.idea/
+*.iml
+*.iws
+*.ipr
+.settings/
+.project
+.classpath
+.factorypath
+bin/
+
+# Archivos de entorno y logs
+.env
+*.log
+
+# Archivo comprimido original del Wallet (opcional, para no subir el .zip pesado)
+*.zip
