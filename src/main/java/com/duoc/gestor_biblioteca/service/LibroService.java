@@ -3,17 +3,18 @@ package com.duoc.gestor_biblioteca.service;
 import java.util.List;
 import java.util.Optional;
 
-import com.duoc.gestor_biblioteca.model.Libro;
+import com.duoc.gestor_biblioteca.dto.request.LibroRequest;
+import com.duoc.gestor_biblioteca.dto.response.LibroResponse;
 
 public interface LibroService {
 
-    List<Libro> getAllLibros();
+    List<LibroResponse> getAllLibros();
 
-    Optional<Libro> getLibroById(Long id);
+    Optional<LibroResponse> getLibroById(Long id);
 
-    Libro createLibro(Libro libro);
+    LibroResponse createLibro(LibroRequest request);
 
-    Libro updateLibro(Long id, Libro libro);
+    LibroResponse updateLibro(Long id, LibroRequest request);
 
     void deleteLibro(Long id);
 

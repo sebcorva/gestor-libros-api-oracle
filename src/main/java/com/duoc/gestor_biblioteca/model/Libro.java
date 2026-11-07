@@ -6,12 +6,11 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+// Entidad JPA pura: las validaciones de entrada viven en LibroRequest.
 @Entity
 @Data
 @NoArgsConstructor
@@ -24,20 +23,16 @@ public class Libro {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "titulo")
-    @NotBlank(message = "El titulo no puede estar vacio")
+    @Column(name = "titulo", nullable = false)
     private String titulo;
 
-    @Column(name = "autor")
-    @NotBlank(message = "El autor no puede estar vacio")
+    @Column(name = "autor", nullable = false)
     private String autor;
 
-    @Column(name = "anio_publicacion")
-    @NotNull(message = "El anio de publicacion no puede ser nulo")
+    @Column(name = "anio_publicacion", nullable = false)
     private Integer anioPublicacion;
 
-    @Column(name = "genero")
-    @NotBlank(message = "El genero no puede estar vacio")
+    @Column(name = "genero", nullable = false)
     private String genero;
 
 }

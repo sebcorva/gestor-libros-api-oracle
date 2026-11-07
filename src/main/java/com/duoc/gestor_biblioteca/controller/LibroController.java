@@ -13,9 +13,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.duoc.gestor_biblioteca.model.Libro;
+import com.duoc.gestor_biblioteca.dto.request.LibroRequest;
+import com.duoc.gestor_biblioteca.dto.response.LibroResponse;
 import com.duoc.gestor_biblioteca.service.LibroService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -26,24 +28,23 @@ public class LibroController {
     private final LibroService libroService;
 
     @GetMapping
-    public ResponseEntity<List<Libro>> getAllLibros() {
-        List<Libro> libros = libroService.getAllLibros();
-        return ResponseEntity.ok(libros);
+    public ResponseEntity<List<LibroResponse>> getAllLibros() {
+        return ResponseEntity.ok(libroService.getAllLibros());
     }
 
     @GetMapping("/{id}")
-    public Optional<Libro> getLibroById(@PathVariable Long id) {
+    public Optional<LibroResponse> getLibroById(@PathVariable Long id) {
         return libroService.getLibroById(id);
     }
 
     @PostMapping
-    public Libro createLibro(@RequestBody Libro libro) {
-        return libroService.createLibro(libro);
+    public LibroResponse createLibro(@Valid @RequestBody LibroRequest request) {
+        return libroService.createLibro(request);
     }
 
     @PutMapping("/{id}")
-    public Libro updateLibro(@PathVariable Long id, @RequestBody Libro libro) {
-        return libroService.updateLibro(id, libro);
+    public LibroResponse updateLibro(@PathVariable Long id, @Valid @RequestBody LibroRequest request) {
+        return libroService.updateLibro(id, request);
     }
 
     @DeleteMapping("/{id}")

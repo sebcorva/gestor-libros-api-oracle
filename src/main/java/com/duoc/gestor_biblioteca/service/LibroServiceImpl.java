@@ -5,6 +5,9 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
+import com.duoc.gestor_biblioteca.dto.mapper.LibroMapper;
+import com.duoc.gestor_biblioteca.dto.request.LibroRequest;
+import com.duoc.gestor_biblioteca.dto.response.LibroResponse;
 import com.duoc.gestor_biblioteca.model.Libro;
 import com.duoc.gestor_biblioteca.repository.LibroRepository;
 
@@ -17,28 +20,28 @@ public class LibroServiceImpl implements LibroService {
     private final LibroRepository libroRepository;
 
     @Override
-    public List<Libro> getAllLibros() {
-        return libroRepository.findAll();
+    public List<LibroResponse> getAllLibros() {
+        return libroRepository.findAll().stream()
+                .map(LibroMapper::toResponse)
+                .toList();
     }
 
     @Override
-    public Optional<Libro> getLibroById(Long id) {
+    public Optional<LibroResponse> getLibroById(Long id) {
         if (id == null || id <= 0) {
             throw new IllegalArgumentException("El id no puede ser nulo o menor a 0");
         }
-        return libroRepository.findById(id);
+        return libroRepository.findById(id).map(LibroMapper::toResponse);
     }
 
     @Override
-    public Libro createLibro(Libro libro) {
-        if (libro == null) {
-            throw new IllegalArgumentException("El libro no puede ser nulo");
-        }
-        return libroRepository.save(libro);
+    public LibroResponse createLibro(LibroRequest request) {
+        Libro libro = LibroMapper.toEntity(request);
+        return LibroMapper.toResponse(libroRepository.save(libro));
     }
 
     @Override
-    public Libro updateLibro(Long id, Libro libro) {
+    public LibroResponse updateLibro(Long id, LibroRequest request) {
         if (id == null || id <= 0) {
             throw new IllegalArgumentException("El id no puede ser nulo o menor a 0");
         }
@@ -47,18 +50,12 @@ public class LibroServiceImpl implements LibroService {
 
         if (libroExistente.isEmpty()) {
             throw new IllegalArgumentException("El libro no existe");
-        } else if (libro == null) {
-            throw new IllegalArgumentException("El libro no puede ser nulo");
         }
 
         Libro libroActualizar = libroExistente.get();
+        LibroMapper.updateEntity(libroActualizar, request);
 
-        libroActualizar.setTitulo(libro.getTitulo());
-        libroActualizar.setAutor(libro.getAutor());
-        libroActualizar.setAnioPublicacion(libro.getAnioPublicacion());
-        libroActualizar.setGenero(libro.getGenero());
-
-        return libroRepository.save(libroActualizar);
+        return LibroMapper.toResponse(libroRepository.save(libroActualizar));
     }
 
     @Override
