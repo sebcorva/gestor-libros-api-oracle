@@ -21,5 +21,6 @@ public record LibroRequest(
         Integer anioPublicacion,
 
         @NotBlank(message = "El genero es obligatorio")
+        @Size(max = 100, message = "El genero no puede superar los 100 caracteres")
         String genero) {
 }

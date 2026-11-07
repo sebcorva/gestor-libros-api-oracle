@@ -47,8 +47,11 @@ Base URL local: `http://localhost:8080`.
 
 Formato de error (igual al del profesor):
 - 404: `{ "status": 404, "message": "No existe el libro con id 99", "timestamp": "..." }`
-- 400: `{ "status": 400, "errors": { "titulo": "El titulo es obligatorio", ... }, "timestamp": "..." }`
-- 500: mensaje genérico, sin stacktrace.
+- 400 por validación: `{ "status": 400, "errors": { "titulo": "El titulo es obligatorio", ... }, "timestamp": "..." }`
+- 400 por body o parámetro inválido: `{ "status": 400, "message": "...", "timestamp": "..." }`
+- 500: `{ "status": 500, "message": "Ocurrio un error inesperado", "timestamp": "..." }`, sin stacktrace (el detalle queda en el log).
+
+Regla para el front: si viene `errors`, es un mapa campo→mensaje; si no, se muestra `message`.
 
 **CORS:** `CorsConfig implements WebMvcConfigurer`, mapping `/libros/**`, origen `http://localhost:4200` (leído de `app.cors.allowed-origins`), métodos `GET, POST, PUT, DELETE`.
 
@@ -67,7 +70,7 @@ Arquitectura en capas de Spring:
 | `dto/response/LibroResponse` | ✅ | — | — |
 | `dto/mapper/LibroMapper` | ✅ | — | — |
 | `exception/LibroNoEncontradoException` | ✅ | — | — |
-| `exception/GlobalExceptionHandler` | 🟡 | Tiene el 404; faltan 400 y 500 | #5 |
+| `exception/GlobalExceptionHandler` | ✅ | — | — |
 | `sql/libros.sql` (DDL + DML) | ❌ | Crearlo | #6 |
 | `app.cors.allowed-origins` en properties | ✅ | — | — |
 
@@ -100,7 +103,16 @@ Arquitectura en capas de Spring:
   > Hecho: `config/CorsConfig implements WebMvcConfigurer` (en `config/` y no en `controller/`, porque es configuración, igual que `SecurityConfig` en el foro), con mapping `/libros/**`, métodos `GET, POST, PUT, DELETE` y el origen leído con `@Value("${app.cors.allowed-origins}")` como `String[]` (admite varios separados por coma). En `application.properties`: `app.cors.allowed-origins=http://localhost:4200`. Así, cambiar el origen (otro puerto o un despliegue) no requiere recompilar.
   >
   > Verificado con curl: el *preflight* `OPTIONS` desde `localhost:4200` responde `200` con `Access-Control-Allow-Origin: http://localhost:4200` para GET, POST, PUT y DELETE; `PATCH` y un origen ajeno → `403`. Las respuestas de error también llevan el header (`404` y `400` con `Origin: 4200`), así que Angular puede leer el mensaje. Sin `Origin` (Postman) todo sigue igual: CORS es una regla del **navegador**, no del servidor.
-- [ ] **#5 Errores 400 y 500:** en `GlobalExceptionHandler`, 400 con mapa de campos (`MethodArgumentNotValidException`, que ya se lanza gracias al `@Valid` del #2) y 500 genérico sin stacktrace. Revisar también los 400 que hoy salen con el cuerpo por defecto de Spring (body malformado, `GET /libros/abc`).
+- [x] **#5 Errores 400 y 500:** en `GlobalExceptionHandler`, 400 con mapa de campos (`MethodArgumentNotValidException`, que ya se lanza gracias al `@Valid` del #2) y 500 genérico sin stacktrace. Revisar también los 400 que hoy salen con el cuerpo por defecto de Spring (body malformado, `GET /libros/abc`).
+  > Hecho: cuatro handlers nuevos que usan el mismo helper `respuesta(...)`:
+  > - `MethodArgumentNotValidException` → `400` con `errors` (campo → mensaje). Usa `putIfAbsent` para que, si un campo falla dos reglas, quede el primer mensaje y no se pise.
+  > - `HttpMessageNotReadableException` → `400` con `message` (JSON mal formado, body vacío o `"anioPublicacion": "abc"`).
+  > - `MethodArgumentTypeMismatchException` → `400` con `message` (`GET /libros/abc`).
+  > - `Exception` → `500` con mensaje genérico y `log.error(...)` con el detalle (`@Slf4j`). **Trampa evitada:** este handler también atrapa excepciones propias de Spring, así que si la excepción implementa `ErrorResponse` (ruta inexistente 404, método no permitido 405, `Content-Type` no soportado 415) se respeta su status en vez de devolver 500.
+  >
+  > La prueba del 500 encontró un hueco de validación: `genero` no tenía `@Size` y un valor de 300 caracteres llegaba a Oracle (`ORA-12899`, máximo 255) → 500. Se agregó `@Size(max = 100)` en `LibroRequest`, el mismo límite que `autor`, y ahora da `400`.
+  >
+  > Verificado con curl: `POST {}` → `400` con los 4 campos; campos en blanco o año negativo → `400` solo con los campos que fallan; `PUT` sin autor → `400`; JSON malformado, sin body o año como texto → `400`; `/libros/abc` → `400`; `/libros/999` → `404`; `/no-existe` → `404`; `PATCH` → `405`; `text/plain` → `415`; los errores llevan el header CORS.
 - [ ] **#6 Entrega:** README actualizado (cómo levantar, endpoints con los status reales, DTOs, CORS, errores), `sql/libros.sql`, colección Postman con los 5 requests y los casos de error, y zip.
 
 ## 6. Criterios de aceptación
