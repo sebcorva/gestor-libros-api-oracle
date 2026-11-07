@@ -58,16 +58,16 @@ Arquitectura en capas de Spring:
 
 | `gestor-libros-ms` (`aa5ec52`) | Estado | Qué falta | Issue |
 |---|---|---|---|
-| `controller/LibroController` | ✅ | `@ResponseStatus(CREATED)` en POST y `NO_CONTENT` en DELETE; `GET /{id}` sin `Optional` | #3, #5 |
+| `controller/LibroController` | ✅ | — (`ResponseEntity` en todos los endpoints desde el #3) | — |
 | `controller/CorsConfig` | ❌ | Crearlo | #4 |
-| `service/LibroService` + `LibroServiceImpl` | ✅ | `orElseThrow` y `existsById` con la excepción propia | #3 |
+| `service/LibroService` + `LibroServiceImpl` | ✅ | — | — |
 | `repository/LibroRepository` | ✅ | — | — |
 | `model/Libro` | ✅ | — (entidad JPA pura desde el #2) | — |
 | `dto/request/LibroRequest` | ✅ | — | — |
 | `dto/response/LibroResponse` | ✅ | — | — |
 | `dto/mapper/LibroMapper` | ✅ | — | — |
-| `exception/LibroNoEncontradoException` | ❌ | Crearla | #3 |
-| `exception/GlobalExceptionHandler` | ❌ | 404 en JSON (#3); 400 y 500 (#5) | #3, #5 |
+| `exception/LibroNoEncontradoException` | ✅ | — | — |
+| `exception/GlobalExceptionHandler` | 🟡 | Tiene el 404; faltan 400 y 500 | #5 |
 | `sql/libros.sql` (DDL + DML) | ❌ | Crearlo | #6 |
 | `app.cors.allowed-origins` en properties | ❌ | Agregarla | #4 |
 
@@ -90,9 +90,14 @@ Arquitectura en capas de Spring:
   > Hecho: `dto/request/LibroRequest` (un solo record para POST y PUT, porque los dos reciben lo mismo; nombre en par con `LibroResponse` y con la convención del foro), `dto/response/LibroResponse` y `dto/mapper/LibroMapper` (clase utilitaria `final` con constructor privado; `toEntity` reutiliza `updateEntity`). Partió de los DTOs de `Portafolio/gestor-biblio`, uniendo `CrearLibroRequest` y `ActualizarLibroRequest`. El **service** recibe `LibroRequest` y devuelve `LibroResponse`, así que el controller ya no conoce la entidad. `Libro` quedó como entidad JPA pura (validaciones fuera, `nullable = false` en las columnas). Se **adelantó `@Valid`** en POST y PUT: al sacar las validaciones de la entidad, sin `@Valid` nada habría validado, y un `POST {}` habría llegado hasta el `NOT NULL` de Oracle. Por eso un `POST {}` ya responde `400` (con el cuerpo por defecto de Spring; el formato JSON propio queda para el #5).
   >
   > Verificado con curl: el JSON de respuesta es idéntico al de antes; un `POST` con `"id": 21` crea un libro **nuevo** y el 21 no cambia; un `PUT /libros/22` con `"id": 99` actualiza el 22; `POST {}` y un año negativo dan `400`. Sin cambios a propósito (son el #3): `GET /libros/999` → `200` + `null`.
-- [ ] **#3 404 en JSON:** `LibroNoEncontradoException`; el service usa `findById(...).orElseThrow(...)` (y `getLibroById` deja de devolver `Optional`); `update` usa `orElseThrow` y `delete` revisa `existsById`; `GlobalExceptionHandler` con el handler del 404 (`status`, `message`, `timestamp`).
+- [x] **#3 404 en JSON + `ResponseEntity`:** responder 404 cuando el libro no existe y unificar las respuestas del controller.
+  > Hecho: `exception/LibroNoEncontradoException` (`RuntimeException`, para no arrastrar `throws` por todas las firmas) y `exception/GlobalExceptionHandler` con `@RestControllerAdvice` y el handler del 404 (`message`, `status`, `timestamp`). El handler arma el cuerpo con un helper privado `respuesta(...)`, que reutilizarán el 400 y el 500 del #5. En el service, un helper privado `buscarLibro(id)` hace `findById(...).orElseThrow(...)` y lo usan `getLibroById` (que ahora devuelve `LibroResponse`, no `Optional`) y `updateLibro`. `deleteLibro` revisa `existsById`, porque `deleteById` ignora en silencio un id que no existe. Se **eliminaron las validaciones `id <= 0`**: un id 0 o negativo simplemente no existe, así que da 404 y ya no queda ningún `IllegalArgumentException` que termine en 500.
+  >
+  > Por la decisión de usar **`ResponseEntity`** (mismo estilo que el foro), el controller quedó con los status definitivos y se **adelantaron los 201 y 204 del #5**: `ok(...)` en GET y PUT, `status(HttpStatus.CREATED).body(...)` en POST (201; sin header `Location`, porque el front toma el `id` del body) y `noContent().build()` en DELETE (204).
+  >
+  > Verificado con curl: `GET /libros/999`, `/0` y `/-5`, `PUT /libros/999` y `DELETE /libros/999` → `404` con JSON; `PUT /libros/22` → `200`; `POST` → `201`; `DELETE` de un libro existente → `204`, y repetirlo → `404`. Nota: Oracle reserva la IDENTITY en bloques de 20, así que los ids nuevos saltan (41, 61…); es normal.
 - [ ] **#4 CORS:** `CorsConfig` para `http://localhost:4200`, con el origen en `application.properties`.
-- [ ] **#5 Validación y errores:** `@ResponseStatus(CREATED)` en POST y `NO_CONTENT` en DELETE; en `GlobalExceptionHandler`, 400 con mapa de campos (`MethodArgumentNotValidException`, que ya se lanza gracias al `@Valid` del #2) y 500 genérico.
+- [ ] **#5 Errores 400 y 500:** en `GlobalExceptionHandler`, 400 con mapa de campos (`MethodArgumentNotValidException`, que ya se lanza gracias al `@Valid` del #2) y 500 genérico sin stacktrace. Revisar también los 400 que hoy salen con el cuerpo por defecto de Spring (body malformado, `GET /libros/abc`).
 - [ ] **#6 Entrega:** README actualizado (cómo levantar, endpoints con los status reales, DTOs, CORS, errores), `sql/libros.sql`, colección Postman con los 5 requests y los casos de error, y zip.
 
 ## 6. Criterios de aceptación

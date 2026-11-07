@@ -1,8 +1,8 @@
 package com.duoc.gestor_biblioteca.controller;
 
 import java.util.List;
-import java.util.Optional;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,22 +33,23 @@ public class LibroController {
     }
 
     @GetMapping("/{id}")
-    public Optional<LibroResponse> getLibroById(@PathVariable Long id) {
-        return libroService.getLibroById(id);
+    public ResponseEntity<LibroResponse> getLibroById(@PathVariable Long id) {
+        return ResponseEntity.ok(libroService.getLibroById(id));
     }
 
     @PostMapping
-    public LibroResponse createLibro(@Valid @RequestBody LibroRequest request) {
-        return libroService.createLibro(request);
+    public ResponseEntity<LibroResponse> createLibro(@Valid @RequestBody LibroRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(libroService.createLibro(request));
     }
 
     @PutMapping("/{id}")
-    public LibroResponse updateLibro(@PathVariable Long id, @Valid @RequestBody LibroRequest request) {
-        return libroService.updateLibro(id, request);
+    public ResponseEntity<LibroResponse> updateLibro(@PathVariable Long id, @Valid @RequestBody LibroRequest request) {
+        return ResponseEntity.ok(libroService.updateLibro(id, request));
     }
 
     @DeleteMapping("/{id}")
-    public void deleteLibro(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteLibro(@PathVariable Long id) {
         libroService.deleteLibro(id);
+        return ResponseEntity.noContent().build();
     }
 }

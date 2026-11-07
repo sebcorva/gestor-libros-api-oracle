@@ -1,13 +1,13 @@
 package com.duoc.gestor_biblioteca.service;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
 import com.duoc.gestor_biblioteca.dto.mapper.LibroMapper;
 import com.duoc.gestor_biblioteca.dto.request.LibroRequest;
 import com.duoc.gestor_biblioteca.dto.response.LibroResponse;
+import com.duoc.gestor_biblioteca.exception.LibroNoEncontradoException;
 import com.duoc.gestor_biblioteca.model.Libro;
 import com.duoc.gestor_biblioteca.repository.LibroRepository;
 
@@ -27,11 +27,8 @@ public class LibroServiceImpl implements LibroService {
     }
 
     @Override
-    public Optional<LibroResponse> getLibroById(Long id) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("El id no puede ser nulo o menor a 0");
-        }
-        return libroRepository.findById(id).map(LibroMapper::toResponse);
+    public LibroResponse getLibroById(Long id) {
+        return LibroMapper.toResponse(buscarLibro(id));
     }
 
     @Override
@@ -42,29 +39,22 @@ public class LibroServiceImpl implements LibroService {
 
     @Override
     public LibroResponse updateLibro(Long id, LibroRequest request) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("El id no puede ser nulo o menor a 0");
-        }
-
-        Optional<Libro> libroExistente = libroRepository.findById(id);
-
-        if (libroExistente.isEmpty()) {
-            throw new IllegalArgumentException("El libro no existe");
-        }
-
-        Libro libroActualizar = libroExistente.get();
+        Libro libroActualizar = buscarLibro(id);
         LibroMapper.updateEntity(libroActualizar, request);
-
         return LibroMapper.toResponse(libroRepository.save(libroActualizar));
     }
 
     @Override
     public void deleteLibro(Long id) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("El id no puede ser nulo o menor a 0");
+        if (!libroRepository.existsById(id)) {
+            throw new LibroNoEncontradoException(id);
         }
-
         libroRepository.deleteById(id);
+    }
+
+    private Libro buscarLibro(Long id) {
+        return libroRepository.findById(id)
+                .orElseThrow(() -> new LibroNoEncontradoException(id));
     }
 
 }
