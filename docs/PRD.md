@@ -59,7 +59,7 @@ Arquitectura en capas de Spring:
 | `gestor-libros-ms` (`aa5ec52`) | Estado | Qué falta | Issue |
 |---|---|---|---|
 | `controller/LibroController` | ✅ | — (`ResponseEntity` en todos los endpoints desde el #3) | — |
-| `controller/CorsConfig` | ❌ | Crearlo | #4 |
+| `config/CorsConfig` | ✅ | — | — |
 | `service/LibroService` + `LibroServiceImpl` | ✅ | — | — |
 | `repository/LibroRepository` | ✅ | — | — |
 | `model/Libro` | ✅ | — (entidad JPA pura desde el #2) | — |
@@ -69,7 +69,7 @@ Arquitectura en capas de Spring:
 | `exception/LibroNoEncontradoException` | ✅ | — | — |
 | `exception/GlobalExceptionHandler` | 🟡 | Tiene el 404; faltan 400 y 500 | #5 |
 | `sql/libros.sql` (DDL + DML) | ❌ | Crearlo | #6 |
-| `app.cors.allowed-origins` en properties | ❌ | Agregarla | #4 |
+| `app.cors.allowed-origins` en properties | ✅ | — | — |
 
 ## 5. Backlog (issues)
 
@@ -96,7 +96,10 @@ Arquitectura en capas de Spring:
   > Por la decisión de usar **`ResponseEntity`** (mismo estilo que el foro), el controller quedó con los status definitivos y se **adelantaron los 201 y 204 del #5**: `ok(...)` en GET y PUT, `status(HttpStatus.CREATED).body(...)` en POST (201; sin header `Location`, porque el front toma el `id` del body) y `noContent().build()` en DELETE (204).
   >
   > Verificado con curl: `GET /libros/999`, `/0` y `/-5`, `PUT /libros/999` y `DELETE /libros/999` → `404` con JSON; `PUT /libros/22` → `200`; `POST` → `201`; `DELETE` de un libro existente → `204`, y repetirlo → `404`. Nota: Oracle reserva la IDENTITY en bloques de 20, así que los ids nuevos saltan (41, 61…); es normal.
-- [ ] **#4 CORS:** `CorsConfig` para `http://localhost:4200`, con el origen en `application.properties`.
+- [x] **#4 CORS:** `CorsConfig` para `http://localhost:4200`, con el origen en `application.properties`.
+  > Hecho: `config/CorsConfig implements WebMvcConfigurer` (en `config/` y no en `controller/`, porque es configuración, igual que `SecurityConfig` en el foro), con mapping `/libros/**`, métodos `GET, POST, PUT, DELETE` y el origen leído con `@Value("${app.cors.allowed-origins}")` como `String[]` (admite varios separados por coma). En `application.properties`: `app.cors.allowed-origins=http://localhost:4200`. Así, cambiar el origen (otro puerto o un despliegue) no requiere recompilar.
+  >
+  > Verificado con curl: el *preflight* `OPTIONS` desde `localhost:4200` responde `200` con `Access-Control-Allow-Origin: http://localhost:4200` para GET, POST, PUT y DELETE; `PATCH` y un origen ajeno → `403`. Las respuestas de error también llevan el header (`404` y `400` con `Origin: 4200`), así que Angular puede leer el mensaje. Sin `Origin` (Postman) todo sigue igual: CORS es una regla del **navegador**, no del servidor.
 - [ ] **#5 Errores 400 y 500:** en `GlobalExceptionHandler`, 400 con mapa de campos (`MethodArgumentNotValidException`, que ya se lanza gracias al `@Valid` del #2) y 500 genérico sin stacktrace. Revisar también los 400 que hoy salen con el cuerpo por defecto de Spring (body malformado, `GET /libros/abc`).
 - [ ] **#6 Entrega:** README actualizado (cómo levantar, endpoints con los status reales, DTOs, CORS, errores), `sql/libros.sql`, colección Postman con los 5 requests y los casos de error, y zip.
 
