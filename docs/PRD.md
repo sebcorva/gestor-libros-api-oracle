@@ -71,7 +71,7 @@ Arquitectura en capas de Spring:
 | `dto/mapper/LibroMapper` | ✅ | — | — |
 | `exception/LibroNoEncontradoException` | ✅ | — | — |
 | `exception/GlobalExceptionHandler` | ✅ | — | — |
-| `sql/libros.sql` (DDL + DML) | ❌ | Crearlo | #6 |
+| `sql/libros.sql` (DDL + DML) | ✅ | — | — |
 | `app.cors.allowed-origins` en properties | ✅ | — | — |
 
 ## 5. Backlog (issues)
@@ -113,7 +113,12 @@ Arquitectura en capas de Spring:
   > La prueba del 500 encontró un hueco de validación: `genero` no tenía `@Size` y un valor de 300 caracteres llegaba a Oracle (`ORA-12899`, máximo 255) → 500. Se agregó `@Size(max = 100)` en `LibroRequest`, el mismo límite que `autor`, y ahora da `400`.
   >
   > Verificado con curl: `POST {}` → `400` con los 4 campos; campos en blanco o año negativo → `400` solo con los campos que fallan; `PUT` sin autor → `400`; JSON malformado, sin body o año como texto → `400`; `/libros/abc` → `400`; `/libros/999` → `404`; `/no-existe` → `404`; `PATCH` → `405`; `text/plain` → `415`; los errores llevan el header CORS.
-- [ ] **#6 Entrega:** README actualizado (cómo levantar, endpoints con los status reales, DTOs, CORS, errores), `sql/libros.sql`, colección Postman con los 5 requests y los casos de error, y zip.
+- [x] **#6 Entrega:** README actualizado (cómo levantar, endpoints con los status reales, DTOs, CORS, errores), `sql/libros.sql`, colección Postman con los 5 requests y los casos de error, y zip.
+  > Hecho:
+  > - **README** reescrito con la estructura del del foro: contexto (AF1 → AF2, extraído de `bfdbf23`), tecnologías, cómo ejecutar (aviso del puerto 8080 compartido con el foro), endpoints con los status reales, ejemplos de request y response, tabla de validaciones, errores (formatos `errors`/`message` y tabla de códigos), CORS, Postman, base de datos y estructura de paquetes. Se corrigieron las ambigüedades del README de la semana 1 ("200 / 201", "404 o vacío", `NUMBER(10)`).
+  > - **`sql/libros.sql`**: DDL de `libros` + los 4 libros de prueba. Los largos de las columnas (255) son mayores o iguales a los límites de `LibroRequest`, así la API rechaza con 400 antes que Oracle.
+  > - **`postman/gestor-libros-ms.postman_collection.json`** (v2.1, sin environment, variables de colección `baseUrl`, `libroId`, `idInexistente`, `origenFront`): 5 carpetas en orden (Consultar, Crear, Actualizar, CORS, Eliminar), cubre los 5 endpoints, los 400/404 y CORS (origen permitido, error con header y origen ajeno → 403). Crea sus propios libros y los borra, así que deja la base como estaba. Corrida con el Postman CLI: **19 requests, 36 assertions, 0 fallos**.
+  > - **`script-zip.sh`** (copiado del foro): genera `gestor-libros-ms-entrega.zip` (59 KB) sin `target/`, `.git/`, `docs/`, `.vscode/` ni scripts; incluye la wallet. El zip está en `.gitignore`.
 
 ## 6. Criterios de aceptación
 

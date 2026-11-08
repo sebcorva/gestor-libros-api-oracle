@@ -1,0 +1,590 @@
+{
+  "info": {
+    "name": "gestor-libros-ms",
+    "description": "CRUD de libros sobre Oracle (puerto 8080). Ejecutar las carpetas en orden (o Run collection): la carpeta 2 crea un libro, guarda su id en la variable libroId y la carpeta 5 lo elimina, así que la colección deja la base como estaba.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "libroId",
+      "value": ""
+    },
+    {
+      "key": "idInexistente",
+      "value": "999999"
+    },
+    {
+      "key": "origenFront",
+      "value": "http://localhost:4200"
+    },
+    {
+      "key": "libroIdExtra",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Consultar",
+      "item": [
+        {
+          "name": "Listar todos los libros",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Devuelve un arreglo\", function () { pm.expect(pm.response.json()).to.be.an(\"array\"); });",
+                  "pm.test(\"Cada libro trae los 5 campos\", function () {",
+                  "  pm.response.json().forEach(function (l) { pm.expect(l).to.have.all.keys(\"id\", \"titulo\", \"autor\", \"anioPublicacion\", \"genero\"); });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/libros"
+          },
+          "response": []
+        },
+        {
+          "name": "Libro por id inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"Mensaje de no encontrado\", function () { pm.expect(pm.response.json().message).to.include(\"No existe el libro\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/libros/{{idInexistente}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Id no numérico (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Mensaje del parámetro inválido\", function () { pm.expect(pm.response.json().message).to.include(\"id\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/libros/abc"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Crear",
+      "item": [
+        {
+          "name": "Crear libro (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
+                  "var libro = pm.response.json();",
+                  "pm.test(\"Devuelve el libro con id generado\", function () { pm.expect(libro.id).to.be.a(\"number\"); pm.expect(libro.titulo).to.eql(\"Rayuela\"); });",
+                  "pm.collectionVariables.set(\"libroId\", libro.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/libros",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Rayuela\",\n  \"autor\": \"Julio Cortázar\",\n  \"anioPublicacion\": 1963,\n  \"genero\": \"Novela\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener el libro creado (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Es el libro creado\", function () { pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get(\"libroId\"))); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/libros/{{libroId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Body vacío: validación (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Un error por cada campo\", function () { pm.expect(pm.response.json().errors).to.have.all.keys(\"titulo\", \"autor\", \"anioPublicacion\", \"genero\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/libros",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Año negativo (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Error solo en anioPublicacion\", function () { pm.expect(pm.response.json().errors).to.have.all.keys(\"anioPublicacion\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/libros",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"X\",\n  \"autor\": \"Y\",\n  \"anioPublicacion\": -1,\n  \"genero\": \"Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "JSON mal formado (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Mensaje de JSON inválido\", function () { pm.expect(pm.response.json().message).to.include(\"JSON\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/libros",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"titulo\": ",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "El id del body se ignora (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
+                  "var libro = pm.response.json();",
+                  "pm.test(\"Crea un id nuevo, no pisa el 21\", function () { pm.expect(libro.id).to.not.eql(21); });",
+                  "pm.collectionVariables.set(\"libroIdExtra\", libro.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/libros",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 21,\n  \"titulo\": \"Intento de pisar el libro 21\",\n  \"autor\": \"Test\",\n  \"anioPublicacion\": 2026,\n  \"genero\": \"Test\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Borrar el libro extra (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204\", function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/libros/{{libroIdExtra}}"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Actualizar",
+      "item": [
+        {
+          "name": "Actualizar libro (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Cambió el título y mantuvo el id\", function () {",
+                  "  var libro = pm.response.json();",
+                  "  pm.expect(libro.titulo).to.eql(\"Rayuela (edición conmemorativa)\");",
+                  "  pm.expect(libro.id).to.eql(Number(pm.collectionVariables.get(\"libroId\")));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/libros/{{libroId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Rayuela (edición conmemorativa)\",\n  \"autor\": \"Julio Cortázar\",\n  \"anioPublicacion\": 1963,\n  \"genero\": \"Novela experimental\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"Mensaje de no encontrado\", function () { pm.expect(pm.response.json().message).to.include(\"No existe el libro\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/libros/{{idInexistente}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Rayuela (edición conmemorativa)\",\n  \"autor\": \"Julio Cortázar\",\n  \"anioPublicacion\": 1963,\n  \"genero\": \"Novela experimental\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar sin autor (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Error en autor\", function () { pm.expect(pm.response.json().errors).to.have.property(\"autor\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/libros/{{libroId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Rayuela\",\n  \"anioPublicacion\": 1963,\n  \"genero\": \"Novela\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. CORS (frontend Angular)",
+      "item": [
+        {
+          "name": "GET con Origin del front",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Permite el origen del front\", function () { pm.response.to.have.header(\"Access-Control-Allow-Origin\", pm.collectionVariables.get(\"origenFront\")); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origenFront}}"
+              }
+            ],
+            "url": "{{baseUrl}}/libros"
+          },
+          "response": []
+        },
+        {
+          "name": "Error con Origin del front (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"El error también trae el header CORS\", function () { pm.response.to.have.header(\"Access-Control-Allow-Origin\", pm.collectionVariables.get(\"origenFront\")); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origenFront}}"
+              }
+            ],
+            "url": "{{baseUrl}}/libros/{{idInexistente}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Origen no permitido (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "http://otro-sitio.com"
+              }
+            ],
+            "url": "{{baseUrl}}/libros"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Eliminar",
+      "item": [
+        {
+          "name": "Eliminar libro (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204\", function () { pm.response.to.have.status(204); });",
+                  "pm.test(\"Sin cuerpo\", function () { pm.expect(pm.response.text()).to.eql(\"\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/libros/{{libroId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar otra vez (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"Mensaje de no encontrado\", function () { pm.expect(pm.response.json().message).to.include(\"No existe el libro\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/libros/{{libroId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Ya no existe (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/libros/{{libroId}}"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
