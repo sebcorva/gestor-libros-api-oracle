@@ -72,6 +72,12 @@
 		    <artifactId>oraclepki</artifactId>
 		    <scope>runtime</scope>
 		</dependency>
+		<!-- Base de datos en memoria SOLO para tests (no entra en el jar final) -->
+		<dependency>
+		    <groupId>com.h2database</groupId>
+		    <artifactId>h2</artifactId>
+		    <scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>

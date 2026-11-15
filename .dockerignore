@@ -1,0 +1,24 @@
+# Nada de esto debe llegar al build context de Docker
+.git
+.gitignore
+.github
+.vscode
+.idea
+.mvn
+mvnw
+mvnw.cmd
+target
+docs
+postman
+sql
+*.zip
+*.md
+script-zip.sh
+docker-compose.yml
+
+# Secretos y wallet: NUNCA dentro de la imagen
+.env
+.env.*
+**/wallet
+Wallet_*
+**/.DS_Store
