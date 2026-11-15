@@ -1,0 +1,139 @@
+# CI/CD: tests en cada PR y push; en push a main (o ejecucion manual) ademas
+# construye la imagen y la publica en ECR.
+name: CI/CD - build, test y push a ECR
+
+on:
+  workflow_dispatch:        # boton "Run workflow" en la pestana Actions
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Minimo privilegio para el token de GitHub
+permissions:
+  contents: read
+
+# Una publicacion a la vez; la siguiente espera (no cancela una a medio subir)
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ACCOUNT_ID: "843987653213"
+  ECR_REPOSITORY: gestor-libros-ms
+
+jobs:
+  test:
+    name: Compilar y probar
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Instalar Java 17 (con cache de Maven)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      # Prueba docker-entrypoint.sh sin Docker ni Oracle: un wallet falso y un "java" falso
+      # que solo verifica que el wallet se extrajo y que la variable con el secreto se borro.
+      - name: Probar docker-entrypoint.sh
+        run: |
+          sed -i 's/\r$//' docker-entrypoint.sh
+          chmod +x docker-entrypoint.sh
+          sh -n docker-entrypoint.sh
+          test_dir="$(mktemp -d)"
+          mkdir -p "$test_dir/input" "$test_dir/bin" "$test_dir/extracted"
+          printf 'wallet-test\n' > "$test_dir/input/tnsnames.ora"
+          (cd "$test_dir/input" && zip -q "$test_dir/wallet.zip" tnsnames.ora)
+          cat > "$test_dir/bin/java" <<'EOF'
+          #!/bin/sh
+          set -e
+          test -s "$TNS_ADMIN/tnsnames.ora"
+          test -z "${ORACLE_WALLET_BASE64:-}"
+          EOF
+          chmod +x "$test_dir/bin/java"
+          PATH="$test_dir/bin:$PATH" \
+            TNS_ADMIN="$test_dir/extracted" \
+            ORACLE_WALLET_BASE64="$(base64 --wrap=0 "$test_dir/wallet.zip")" \
+            ./docker-entrypoint.sh
+
+      # Los tests usan el perfil "test" con H2: no necesitan Oracle ni wallet
+      - name: Compilar y ejecutar tests
+        run: mvn -B verify
+
+  publish:
+    name: Construir y publicar imagen en ECR
+    needs: test   # solo corre si los tests pasaron
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      # Credenciales temporales de AWS Academy (hay que actualizarlas al reiniciar el lab)
+      - name: Configurar credenciales de AWS
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Falla con un mensaje claro si los secrets son de otra cuenta; crea el repo si no existe
+      - name: Verificar cuenta de AWS y repositorio ECR
+        shell: bash
+        run: |
+          account_id="$(aws sts get-caller-identity --query Account --output text)"
+          if [[ "$account_id" != "$AWS_ACCOUNT_ID" ]]; then
+            echo "::error::Las credenciales apuntan a la cuenta $account_id, no a $AWS_ACCOUNT_ID."
+            exit 1
+          fi
+
+          if ! repositories="$(aws ecr describe-repositories \
+            --repository-names "$ECR_REPOSITORY" \
+            --region "$AWS_REGION" 2>&1)"; then
+            if [[ "$repositories" != *"RepositoryNotFoundException"* ]]; then
+              echo "$repositories"
+              exit 1
+            fi
+
+            aws ecr create-repository \
+              --repository-name "$ECR_REPOSITORY" \
+              --image-tag-mutability MUTABLE \
+              --image-scanning-configuration scanOnPush=true \
+              --encryption-configuration encryptionType=AES256 \
+              --region "$AWS_REGION"
+          else
+            echo "$repositories"
+          fi
+
+      # Equivale a: aws ecr get-login-password | docker login ...
+      - name: Iniciar sesion en ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Cache type=gha: reutiliza capas de Docker entre ejecuciones (p. ej. dependencias de Maven)
+      - name: Construir y subir imagen
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Resumen
+        run: |
+          echo "Imagen publicada: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
