@@ -31,3 +31,7 @@ bin/
 
 # Archivo comprimido original del Wallet (opcional, para no subir el .zip pesado)
 *.zip
+
+# Wallet de Oracle: vive fuera del repo (ver .env.example)
+**/wallet/
+Wallet_*/
