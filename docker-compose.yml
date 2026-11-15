@@ -1,0 +1,12 @@
+# Ejecuta la imagen localmente igual que en ECS: el wallet llega como
+# ORACLE_WALLET_BASE64 (zip en base64) desde el archivo .env (ver .env.example).
+services:
+  app:
+    build: .
+    image: gestor-libros-ms:local
+    ports:
+      - "8080:8080"
+    env_file: .env
+    environment:
+      # Dentro del contenedor el entrypoint extrae el wallet aqui (sobrescribe el valor de .env)
+      TNS_ADMIN: /app/wallet
